@@ -11,17 +11,18 @@ import android.view.ViewGroup;
 import android.widget.Scroller;
 
 public class SlideMenu extends ViewGroup {
-	public static final int SCREEN_MENU = 0;
+	public static final int SCREEN_LEFT_MENU = 0;
+	public static final int SCREEN_RIGHT_MENU = 2;
 	public static final int SCREEN_MAIN = 1;
 	private static final int SCREEN_INVALID = -1;
-	
+
 	private int mCurrentScreen;
 	private int mNextScreen = SCREEN_INVALID;
 
 	private Scroller mScroller;
 	private VelocityTracker mVelocityTracker;
 	private int mTouchSlop;
-	
+
 	private float mLastMotionX;
 	private float mLastMotionY;
 
@@ -56,31 +57,49 @@ public class SlideMenu extends ViewGroup {
 	}
 
 	public void measureViews(int widthMeasureSpec, int heightMeasureSpec) {
-		View menuView = getChildAt(0);
-		menuView.measure(menuView.getLayoutParams().width + menuView.getLeft()
-				+ menuView.getRight(), heightMeasureSpec);
-
+		View leftMenuView = getChildAt(0);
+		leftMenuView.measure(leftMenuView.getLayoutParams().width
+				+ leftMenuView.getLeft() + leftMenuView.getRight(),
+				heightMeasureSpec);
+		int childCount = getChildCount();
 		View contentView = getChildAt(1);
 		contentView.measure(widthMeasureSpec, heightMeasureSpec);
+		System.out.println("widthMeasureSpec " + widthMeasureSpec);
+		if (childCount > 2) {
+			View rightMenuView = getChildAt(2);
+			System.out.println("rightMenuView.getLayoutParams().width "
+					+ rightMenuView.getLayoutParams().width
+					+ " rightMenuView.getLeft() " + rightMenuView.getLeft()
+					+ " rightMenuView.getRight() " + rightMenuView.getRight());
+			rightMenuView.measure(widthMeasureSpec + rightMenuView.getLeft()
+			// + rightMenuView.getRight()
+					, heightMeasureSpec);
+		}
 	}
 
 	@Override
 	protected void onLayout(boolean changed, int l, int t, int r, int b) {
+		System.out.println("onLayout is invoked!!!");
 		int childCount = getChildCount();
-		if (childCount != 2) {
+		if (childCount < 2) {
 			throw new IllegalStateException(
-					"The childCount of SlidingMenu must be 2");
+					"The childCount of SlidingMenu must more than 2");
 		}
 
-		View menuView = getChildAt(0);
-		final int width = menuView.getMeasuredWidth();
-		menuView.layout(-width, 0, 0, menuView.getMeasuredHeight());
-
+		View leftMenuView = getChildAt(0);
+		final int width = leftMenuView.getMeasuredWidth();
+		leftMenuView.layout(-width, 0, 0, leftMenuView.getMeasuredHeight());
 		View contentView = getChildAt(1);
 		contentView.layout(0, 0, contentView.getMeasuredWidth(),
 				contentView.getMeasuredHeight());
+		if (childCount > 2) {
+			View rightMenuView = getChildAt(2);
+			rightMenuView.layout(width, 0, rightMenuView.getMeasuredWidth(),
+					rightMenuView.getMeasuredHeight());
+
+		}
 	}
-	
+
 	@Override
 	protected void onFinishInflate() {
 		super.onFinishInflate();
@@ -91,7 +110,7 @@ public class SlideMenu extends ViewGroup {
 			child.setClickable(true);
 		}
 	}
-	
+
 	@Override
 	public boolean onInterceptTouchEvent(MotionEvent ev) {
 		if (mLocked) {
@@ -164,7 +183,7 @@ public class SlideMenu extends ViewGroup {
 		 */
 		return mTouchState != TOUCH_STATE_REST;
 	}
-	
+
 	void enableChildrenCache() {
 		final int count = getChildCount();
 		for (int i = 0; i < count; i++) {
@@ -180,7 +199,7 @@ public class SlideMenu extends ViewGroup {
 			layout.setDrawingCacheEnabled(false);
 		}
 	}
-	
+
 	@Override
 	public boolean onTouchEvent(MotionEvent ev) {
 		if (mLocked) {
@@ -235,12 +254,37 @@ public class SlideMenu extends ViewGroup {
 				final VelocityTracker velocityTracker = mVelocityTracker;
 				velocityTracker.computeCurrentVelocity(1000);
 				int velocityX = (int) velocityTracker.getXVelocity();
-
+				// String strCurrentScreen = null;
+				// switch (mCurrentScreen) {
+				// case SCREEN_INVALID:
+				// strCurrentScreen = "SCREEN_INVALID";
+				// break;
+				// case SCREEN_LEFT_MENU:
+				// strCurrentScreen = "SCREEN_LEFT_MENU";
+				// break;
+				// case SCREEN_MAIN:
+				// strCurrentScreen = "SCREEN_MAIN";
+				// break;
+				// case SCREEN_RIGHT_MENU:
+				// strCurrentScreen = "SCREEN_RIGHT_MENU";
+				// break;
+				// }
+				// System.out.println("mCurrentScreen is " + strCurrentScreen
+				// + "[" + mCurrentScreen + "]" + " velocityX is "
+				// + velocityX + " the number of children is "
+				// + getChildCount());
 				if (velocityX > SNAP_VELOCITY && mCurrentScreen == SCREEN_MAIN) {
 					// Fling hard enough to move left
-					snapToScreen(SCREEN_MENU);
+					snapToScreen(SCREEN_LEFT_MENU);
 				} else if (velocityX < -SNAP_VELOCITY
-						&& mCurrentScreen == SCREEN_MENU) {
+						&& mCurrentScreen == SCREEN_MAIN) {
+					if (getChildCount() >= 3) {
+						snapToScreen(SCREEN_RIGHT_MENU);
+					} else {
+						snapToDestination();
+					}
+				} else if (velocityX < -SNAP_VELOCITY
+						&& mCurrentScreen == SCREEN_LEFT_MENU) {
 					// Fling hard enough to move right
 					snapToScreen(SCREEN_MAIN);
 				} else {
@@ -260,7 +304,7 @@ public class SlideMenu extends ViewGroup {
 
 		return true;
 	}
-	
+
 	@Override
 	public void computeScroll() {
 		if (mScroller.computeScrollOffset()) {
@@ -301,7 +345,7 @@ public class SlideMenu extends ViewGroup {
 		}
 		return super.dispatchUnhandledMove(focused, direction);
 	}
-	
+
 	protected void snapToScreen(int whichScreen) {
 
 		enableChildrenCache();
@@ -332,25 +376,25 @@ public class SlideMenu extends ViewGroup {
 				/ screenWidth;
 		snapToScreen(whichScreen);
 	}
-	
+
 	public int getCurrentScreen() {
 		return mCurrentScreen;
 	}
-	
+
 	public boolean isMainScreenShowing() {
 		return mCurrentScreen == SCREEN_MAIN;
 	}
-	
+
 	public void openMenu() {
-		mCurrentScreen = SCREEN_MENU;
+		mCurrentScreen = SCREEN_LEFT_MENU;
 		snapToScreen(mCurrentScreen);
 	}
-	
+
 	public void closeMenu() {
 		mCurrentScreen = SCREEN_MAIN;
 		snapToScreen(mCurrentScreen);
 	}
-	
+
 	public void unlock() {
 		mLocked = false;
 	}
@@ -358,5 +402,5 @@ public class SlideMenu extends ViewGroup {
 	public void lock() {
 		mLocked = true;
 	}
-	
+
 }
